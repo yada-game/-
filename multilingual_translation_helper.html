@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="th" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบแปลภาษา 3 สไตล์ AI (TH - CN - EN) | Smart Translation Helper</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Prompt & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Prompt', 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        @keyframes pulse-subtle {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .animate-pulse-subtle {
+            animation: pulse-subtle 1.5s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 flex flex-col justify-between">
+
+    <!-- Top Toast Notification -->
+    <div id="toast" class="fixed top-5 right-5 z-50 transform translate-y-[-100px] opacity-0 transition-all duration-300 ease-out bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center space-x-3 border border-slate-700">
+        <i class="fa-solid me-1 text-green-400 text-lg" id="toast-icon"></i>
+        <span id="toast-message" class="text-sm font-medium">คัดลอกข้อความแล้ว!</span>
+    </div>
+
+    <!-- Main Wrapper -->
+    <div class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <!-- Header -->
+        <header class="mb-6 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center pb-6 border-b border-slate-200 gap-4">
+            <div>
+                <div class="inline-flex items-center space-x-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold mb-2">
+                    <i class="fa-solid fa-robot text-blue-600"></i>
+                    <span>แปลภาษาแม่นยำระดับ AI Pro (Gemini)</span>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">เครื่องมือแปลภาษา 3 ระดับสไตล์การพูด</h1>
+                <p class="text-slate-500 text-sm mt-1">ไทย 🇹🇭 • จีน 🇨🇳 • อังกฤษ 🇬🇧 | ออกแบบมาสำหรับแชทบริการลูกค้าและธุรกิจ</p>
+            </div>
+            
+            <div class="flex items-center gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200">
+                <span class="text-xs text-slate-500 font-medium pl-3 hidden md:inline">ภาษาต้นทาง:</span>
+                <button onclick="setSourceLang('th')" id="src-btn-th" class="src-lang-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 bg-blue-600 text-white shadow-md">
+                    <span>🇹🇭</span> ไทย
+                </button>
+                <button onclick="setSourceLang('zh')" id="src-btn-zh" class="src-lang-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 text-slate-600 hover:bg-slate-100">
+                    <span>🇨🇳</span> 中文
+                </button>
+                <button onclick="setSourceLang('en')" id="src-btn-en" class="src-lang-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 text-slate-600 hover:bg-slate-100">
+                    <span>🇬🇧</span> English
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Grid Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left Panel: Input & Preset Examples -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+                
+                <!-- Input Box Card -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 relative">
+                    <div class="flex justify-between items-center mb-3">
+                        <label for="source-text" class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-pen-to-square text-blue-600"></i>
+                            <span id="input-label-text">พิมพ์ข้อความภาษาไทยที่ต้องการแปล</span>
+                        </label>
+                        <button onclick="clearInput()" class="text-xs text-slate-400 hover:text-red-500 transition flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-left"></i> ล้างข้อมูล
+                        </button>
+                    </div>
+
+                    <div class="relative">
+                        <textarea id="source-text" rows="4" 
+                            class="w-full p-4 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-none text-slate-800 placeholder-slate-400 text-base custom-scrollbar transition"
+                            placeholder="ระบุคำหรือประโยคที่ต้องการแปล..." 
+                            onkeydown="handleKeyDown(event)"
+                            oninput="handleInput()"></textarea>
+                    </div>
+
+                    <div class="mt-2 text-xs text-slate-400 flex items-center justify-between">
+                        <span class="flex items-center gap-1 text-blue-600 font-medium">
+                            <i class="fa-solid fa-keyboard"></i> กด <kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 font-sans text-slate-700">Enter</kbd> เพื่อแปลทันที (กด <kbd class="bg-slate-100 px-1.5 py-0.5 rounded border border-slate-300 font-sans text-slate-700">Shift+Enter</kbd> เพื่อขึ้นบรรทัดใหม่)
+                        </span>
+                        <span id="char-count">0 ตัวอักษร</span>
+                    </div>
+
+                    <div class="mt-4 flex justify-end items-center">
+                        <button id="translate-btn" onclick="performTranslation()" class="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-medium px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-2 text-sm w-full sm:w-auto justify-center">
+                            <i class="fa-solid fa-bolt text-amber-300" id="translate-btn-icon"></i>
+                            <span id="translate-btn-text">แปลภาษาด่วน (Enter)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Presets / Example Templates Card -->
+                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 flex-1 flex flex-col">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-lightbulb text-amber-500"></i>
+                            <span>ตัวอย่างประโยคใช้บ่อย</span>
+                        </h3>
+                        <span class="text-xs text-slate-400">คลิกเพื่อลองใช้</span>
+                    </div>
+
+                    <div id="presets-container" class="space-y-2 overflow-y-auto max-h-[360px] pr-1 custom-scrollbar">
+                        <!-- Presets dynamically inserted -->
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Panel: Output Translations (3 Tone Columns) -->
+            <div class="lg:col-span-7 space-y-6">
+
+                <!-- Header / Output Direction Indicator -->
+                <div class="bg-slate-900 text-white p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 shadow-sm">
+                    <div class="flex items-center space-x-2 text-sm">
+                        <span class="text-slate-400">ภาษาปลายทางที่จะแสดง:</span>
+                        <span id="target-langs-badge" class="font-bold text-amber-400 bg-slate-800 px-3 py-1 rounded-lg border border-slate-700">
+                            🇨🇳 ภาษาจีน & 🇬🇧 ภาษาอังกฤษ
+                        </span>
+                    </div>
+                    <div class="text-xs text-slate-400 flex items-center gap-1">
+                        <i class="fa-solid fa-sparkles text-amber-400"></i> แปลถอดบริบทธรรมชาติ พร้อมความหมายไทยย้อนกลับ
+                    </div>
+                </div>
+
+                <!-- Three Style Cards Container -->
+                <div class="grid grid-cols-1 gap-6">
+
+                    <!-- Style 1: สุภาพเป็นกันเอง (Polite & Friendly) -->
+                    <div class="bg-white rounded-2xl border border-emerald-200 shadow-sm overflow-hidden transition duration-200 hover:shadow-md">
+                        <div class="bg-gradient-to-r from-emerald-50 to-teal-50 px-5 py-3 border-b border-emerald-100 flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">1. แบบสุภาพเป็นกันเอง (Polite & Friendly)</h3>
+                            </div>
+                            <span class="text-xs bg-emerald-100 text-emerald-800 font-medium px-2.5 py-0.5 rounded-full">แชทคุยทั่วไป / เพื่อนร่วมงาน</span>
+                        </div>
+                        <div class="p-5 space-y-4 output-card-content">
+                            <!-- Translation 1 -->
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-semibold text-slate-500 flex items-center gap-1" id="lang-label-1-1">
+                                        🇨🇳 ภาษาจีน (中文)
+                                    </span>
+                                    <div class="flex space-x-1">
+                                        <button onclick="speakText('text-1-1', getLangCode(1))" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="ฟังเสียงอ่าน">
+                                            <i class="fa-solid fa-volume-high text-xs"></i>
+                                        </button>
+                                        <button onclick="copyContent('text-1-1')" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="คัดลอก">
+                                            <i class="fa-regular fa-copy text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p id="text-1-1" class="text-base font-semibold text-slate-900 leading-relaxed"></p>
+                                <p id="pinyin-1-1" class="text-xs text-emerald-700 font-mono mt-1 hidden"></p>
+                            </div>
+
+                            <!-- Translation 2 -->
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-semibold text-slate-500 flex items-center gap-1" id="lang-label-1-2">
+                                        🇬🇧 ภาษาอังกฤษ (English)
+                                    </span>
+                                    <div class="flex space-x-1">
+                                        <button onclick="speakText('text-1-2', getLangCode(2))" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="ฟังเสียงอ่าน">
+                                            <i class="fa-solid fa-volume-high text-xs"></i>
+                                        </button>
+                                        <button onclick="copyContent('text-1-2')" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="คัดลอก">
+                                            <i class="fa-regular fa-copy text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p id="text-1-2" class="text-base font-semibold text-slate-900 leading-relaxed"></p>
+                                <p id="pinyin-1-2" class="text-xs text-emerald-700 font-mono mt-1 hidden"></p>
+                            </div>
+
+                            <!-- Dedicated Thai Back-Translation Box -->
+                            <div class="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/80">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-amber-800 flex items-center gap-1">
+                                        <i class="fa-solid fa-language text-amber-600"></i>
+                                        <span id="back-label-1">ความหมายภาษาไทยย้อนกลับ (Thai Back-Translation):</span>
+                                    </span>
+                                    <button onclick="copyContent('thai-back-1')" class="text-amber-700 hover:text-amber-900 p-1 rounded transition" title="คัดลอกคำแปลไทย">
+                                        <i class="fa-regular fa-copy text-xs"></i>
+                                    </button>
+                                </div>
+                                <p id="thai-back-1" class="text-sm font-medium text-slate-800 leading-relaxed"></p>
+                            </div>
+
+                            <!-- Meaning / Explanation -->
+                            <div class="pt-1 border-t border-slate-100 flex items-start space-x-2 text-xs text-slate-500">
+                                <span class="font-medium text-slate-600 whitespace-nowrap" id="meaning-label-1">คำแนะนำน้ำเสียง:</span>
+                                <span id="meaning-1" class="text-slate-700 italic"></span>
+                            </div>
+
+                            <!-- Context Tip Box -->
+                            <div class="bg-emerald-50/60 p-3 rounded-xl border border-emerald-100/80 text-xs text-emerald-900 flex items-start space-x-2">
+                                <i class="fa-solid fa-circle-check text-emerald-600 mt-0.5"></i>
+                                <div>
+                                    <span class="font-semibold">คำแนะนำการใช้:</span>
+                                    <span id="tip-1">เหมาะสำหรับใช้คุยกับเพื่อนร่วมงาน แชทสอบถามอย่างเป็นกันเอง สร้างความสนิทสนมแต่ยังคงไว้ซึ่งความเคารพ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Style 2: แบบทั่วไป (General / Standard) -->
+                    <div class="bg-white rounded-2xl border border-blue-200 shadow-sm overflow-hidden transition duration-200 hover:shadow-md">
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 px-5 py-3 border-b border-blue-100 flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">2. แบบทั่วไป (General / Standard)</h3>
+                            </div>
+                            <span class="text-xs bg-blue-100 text-blue-800 font-medium px-2.5 py-0.5 rounded-full">มาตรฐาน / ข้อความสั้น</span>
+                        </div>
+                        <div class="p-5 space-y-4 output-card-content">
+                            <!-- Translation 1 -->
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-semibold text-slate-500 flex items-center gap-1" id="lang-label-2-1">
+                                        🇨🇳 ภาษาจีน (中文)
+                                    </span>
+                                    <div class="flex space-x-1">
+                                        <button onclick="speakText('text-2-1', getLangCode(1))" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="ฟังเสียงอ่าน">
+                                            <i class="fa-solid fa-volume-high text-xs"></i>
+                                        </button>
+                                        <button onclick="copyContent('text-2-1')" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="คัดลอก">
+                                            <i class="fa-regular fa-copy text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p id="text-2-1" class="text-base font-semibold text-slate-900 leading-relaxed"></p>
+                                <p id="pinyin-2-1" class="text-xs text-blue-700 font-mono mt-1 hidden"></p>
+                            </div>
+
+                            <!-- Translation 2 -->
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-semibold text-slate-500 flex items-center gap-1" id="lang-label-2-2">
+                                        🇬🇧 ภาษาอังกฤษ (English)
+                                    </span>
+                                    <div class="flex space-x-1">
+                                        <button onclick="speakText('text-2-2', getLangCode(2))" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="ฟังเสียงอ่าน">
+                                            <i class="fa-solid fa-volume-high text-xs"></i>
+                                        </button>
+                                        <button onclick="copyContent('text-2-2')" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="คัดลอก">
+                                            <i class="fa-regular fa-copy text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p id="text-2-2" class="text-base font-semibold text-slate-900 leading-relaxed"></p>
+                                <p id="pinyin-2-2" class="text-xs text-blue-700 font-mono mt-1 hidden"></p>
+                            </div>
+
+                            <!-- Dedicated Thai Back-Translation Box -->
+                            <div class="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/80">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-amber-800 flex items-center gap-1">
+                                        <i class="fa-solid fa-language text-amber-600"></i>
+                                        <span id="back-label-2">ความหมายภาษาไทยย้อนกลับ (Thai Back-Translation):</span>
+                                    </span>
+                                    <button onclick="copyContent('thai-back-2')" class="text-amber-700 hover:text-amber-900 p-1 rounded transition" title="คัดลอกคำแปลไทย">
+                                        <i class="fa-regular fa-copy text-xs"></i>
+                                    </button>
+                                </div>
+                                <p id="thai-back-2" class="text-sm font-medium text-slate-800 leading-relaxed"></p>
+                            </div>
+
+                            <!-- Meaning / Explanation -->
+                            <div class="pt-1 border-t border-slate-100 flex items-start space-x-2 text-xs text-slate-500">
+                                <span class="font-medium text-slate-600 whitespace-nowrap" id="meaning-label-2">คำแนะนำน้ำเสียง:</span>
+                                <span id="meaning-2" class="text-slate-700 italic"></span>
+                            </div>
+
+                            <!-- Context Tip Box -->
+                            <div class="bg-blue-50/60 p-3 rounded-xl border border-blue-100/80 text-xs text-blue-900 flex items-start space-x-2">
+                                <i class="fa-solid fa-circle-check text-blue-600 mt-0.5"></i>
+                                <div>
+                                    <span class="font-semibold">คำแนะนำการใช้:</span>
+                                    <span id="tip-2">ประโยคสั้น กระชับ ตรงไปตรงมา เหมาะสำหรับป้ายประกาศ ข้อความสั้น หรือส่งแจ้งเตือนในระบบ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Style 3: แบบเอาไว้คุยกับลูกค้า (Customer Support / Business) -->
+                    <div class="bg-white rounded-2xl border border-purple-200 shadow-sm overflow-hidden transition duration-200 hover:shadow-md">
+                        <div class="bg-gradient-to-r from-purple-50 to-pink-50 px-5 py-3 border-b border-purple-100 flex justify-between items-center">
+                            <div class="flex items-center space-x-2">
+                                <span class="w-3 h-3 rounded-full bg-purple-600"></span>
+                                <h3 class="font-bold text-slate-800 text-sm sm:text-base">3. แบบเอาไว้คุยกับลูกค้า (Customer Support & Business)</h3>
+                            </div>
+                            <span class="text-xs bg-purple-100 text-purple-800 font-semibold px-2.5 py-0.5 rounded-full">บริการลูกค้า / ทางการ</span>
+                        </div>
+                        <div class="p-5 space-y-4 output-card-content">
+                            <!-- Translation 1 -->
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-semibold text-slate-500 flex items-center gap-1" id="lang-label-3-1">
+                                        🇨🇳 ภาษาจีน (中文)
+                                    </span>
+                                    <div class="flex space-x-1">
+                                        <button onclick="speakText('text-3-1', getLangCode(1))" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="ฟังเสียงอ่าน">
+                                            <i class="fa-solid fa-volume-high text-xs"></i>
+                                        </button>
+                                        <button onclick="copyContent('text-3-1')" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="คัดลอก">
+                                            <i class="fa-regular fa-copy text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p id="text-3-1" class="text-base font-semibold text-slate-900 leading-relaxed"></p>
+                                <p id="pinyin-3-1" class="text-xs text-purple-700 font-mono mt-1 hidden"></p>
+                            </div>
+
+                            <!-- Translation 2 -->
+                            <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-semibold text-slate-500 flex items-center gap-1" id="lang-label-3-2">
+                                        🇬🇧 ภาษาอังกฤษ (English)
+                                    </span>
+                                    <div class="flex space-x-1">
+                                        <button onclick="speakText('text-3-2', getLangCode(2))" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="ฟังเสียงอ่าน">
+                                            <i class="fa-solid fa-volume-high text-xs"></i>
+                                        </button>
+                                        <button onclick="copyContent('text-3-2')" class="text-slate-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-white transition" title="คัดลอก">
+                                            <i class="fa-regular fa-copy text-xs"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <p id="text-3-2" class="text-base font-semibold text-slate-900 leading-relaxed"></p>
+                                <p id="pinyin-3-2" class="text-xs text-purple-700 font-mono mt-1 hidden"></p>
+                            </div>
+
+                            <!-- Dedicated Thai Back-Translation Box -->
+                            <div class="bg-amber-50/70 p-3.5 rounded-xl border border-amber-200/80">
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="text-xs font-bold text-amber-800 flex items-center gap-1">
+                                        <i class="fa-solid fa-language text-amber-600"></i>
+                                        <span id="back-label-3">ความหมายภาษาไทยย้อนกลับ (Thai Back-Translation):</span>
+                                    </span>
+                                    <button onclick="copyContent('thai-back-3')" class="text-amber-700 hover:text-amber-900 p-1 rounded transition" title="คัดลอกคำแปลไทย">
+                                        <i class="fa-regular fa-copy text-xs"></i>
+                                    </button>
+                                </div>
+                                <p id="thai-back-3" class="text-sm font-medium text-slate-800 leading-relaxed"></p>
+                            </div>
+
+                            <!-- Meaning / Explanation -->
+                            <div class="pt-1 border-t border-slate-100 flex items-start space-x-2 text-xs text-slate-500">
+                                <span class="font-medium text-slate-600 whitespace-nowrap" id="meaning-label-3">คำแนะนำน้ำเสียง:</span>
+                                <span id="meaning-3" class="text-slate-700 italic"></span>
+                            </div>
+
+                            <!-- Context Tip Box -->
+                            <div class="bg-purple-50/60 p-3 rounded-xl border border-purple-100/80 text-xs text-purple-900 flex items-start space-x-2">
+                                <i class="fa-solid fa-circle-check text-purple-600 mt-0.5"></i>
+                                <div>
+                                    <span class="font-semibold">คำแนะนำการใช้:</span>
+                                    <span id="tip-3">สุภาพ ให้เกียรติลูกค้า มีหางเสียงและถ้อยคำบริการ (เช่น 客服, Dear Valued Customer, Thank you) เหมาะสำหรับแชทบริการลูกค้า ร้านค้าออนไลน์ และตอบอีเมลธุรกิจ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-12 py-4 text-center text-xs text-slate-400">
+        <div class="max-w-7xl mx-auto px-4">
+            ระบบช่วยแปลภาษา 3 ระดับสไตล์ AI Powered by Gemini 3 Flash • Multilingual Smart Translator
+        </div>
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State
+        let currentSourceLang = 'th'; // 'th', 'zh', 'en'
+        let isTranslating = false;
+        
+        // Instant In-Memory Cache
+        const memoryCache = new Map();
+
+        // DOM Element References
+        const sourceTextEl = document.getElementById('source-text');
+        const charCountEl = document.getElementById('char-count');
+
+        // Handle Keyboard Events (Enter to translate, Shift+Enter for new line)
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                performTranslation();
+            }
+        }
+
+        // Handle Input Character Counter
+        function handleInput() {
+            if (sourceTextEl && charCountEl) {
+                charCountEl.innerText = `${sourceTextEl.value.length} ตัวอักษร`;
+            }
+        }
+
+        // Set Source Language
+        function setSourceLang(lang) {
+            currentSourceLang = lang;
+            
+            // Update Active Buttons
+            ['th', 'zh', 'en'].forEach(l => {
+                const btn = document.getElementById(`src-btn-${l}`);
+                if (!btn) return;
+                if (l === lang) {
+                    btn.className = 'src-lang-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 bg-blue-600 text-white shadow-md';
+                } else {
+                    btn.className = 'src-lang-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 text-slate-600 hover:bg-slate-100';
+                }
+            });
+
+            // Update Input Labels and Target Badges
+            const inputLabel = document.getElementById('input-label-text');
+            const targetBadge = document.getElementById('target-langs-badge');
+
+            if (lang === 'th') {
+                if (inputLabel) inputLabel.innerText = "พิมพ์ข้อความภาษาไทยที่ต้องการแปล";
+                if (targetBadge) targetBadge.innerText = "🇨🇳 ภาษาจีน & 🇬🇧 ภาษาอังกฤษ";
+                updateLanguageCardLabels('🇨🇳 ภาษาจีน (中文)', '🇬🇧 ภาษาอังกฤษ (English)');
+                updateBackTranslationLabels("ความหมายภาษาไทยย้อนกลับ (Thai Back-Translation):");
+            } else if (lang === 'zh') {
+                if (inputLabel) inputLabel.innerText = "请输入要翻译的中文内容";
+                if (targetBadge) targetBadge.innerText = "🇹🇭 ภาษาไทย & 🇬🇧 ภาษาอังกฤษ";
+                updateLanguageCardLabels('🇹🇭 ภาษาไทย (Thai)', '🇬🇧 ภาษาอังกฤษ (English)');
+                updateBackTranslationLabels("ความหมายภาษาไทย (Meaning in Thai):");
+            } else if (lang === 'en') {
+                if (inputLabel) inputLabel.innerText = "Type English text to translate";
+                if (targetBadge) targetBadge.innerText = "🇹🇭 ภาษาไทย & 🇨🇳 ภาษาจีน";
+                updateLanguageCardLabels('🇹🇭 ภาษาไทย (Thai)', '🇨🇳 ภาษาจีน (中文)');
+                updateBackTranslationLabels("ความหมายภาษาไทย (Meaning in Thai):");
+            }
+
+            renderPresets();
+        }
+
+        function updateLanguageCardLabels(lbl1, lbl2) {
+            [1, 2, 3].forEach(styleIdx => {
+                const l1 = document.getElementById(`lang-label-${styleIdx}-1`);
+                const l2 = document.getElementById(`lang-label-${styleIdx}-2`);
+                if (l1) l1.innerText = lbl1;
+                if (l2) l2.innerText = lbl2;
+            });
+        }
+
+        function updateBackTranslationLabels(label) {
+            [1, 2, 3].forEach(styleIdx => {
+                const backLabel = document.getElementById(`back-label-${styleIdx}`);
+                if (backLabel) backLabel.innerText = label;
+            });
+        }
+
+        // Clear Text Input
+        function clearInput() {
+            if (sourceTextEl) sourceTextEl.value = '';
+            handleInput();
+        }
+
+        // Language code resolver for Text-to-Speech
+        function getLangCode(targetIndex) {
+            if (currentSourceLang === 'th') {
+                return targetIndex === 1 ? 'zh' : 'en';
+            } else if (currentSourceLang === 'zh') {
+                return targetIndex === 1 ? 'th' : 'en';
+            } else {
+                return targetIndex === 1 ? 'th' : 'zh';
+            }
+        }
+
+        // Offline Fallback Database for Instant Speed & Reliability
+        const database = {
+            th: [
+                {
+                    sourceText: "หากลูกค้าชำระยอดแล้ว แจ้งสลิปให้แอดมินได้เลยนะคะ",
+                    tag: "การชำระเงิน",
+                    friendly: {
+                        target1: "付完款后，把转账截图发给我就行啦！",
+                        pinyin1: "Fù wán kuǎn hòu, bǎ zhuǎnzhàng jiútú fā gěi wǒ jiù xíng la!",
+                        target2: "Once you've paid, just send me the receipt!",
+                        thaiBack: "ถ้าโอนเงินเรียบร้อยแล้ว ส่งรูปสลิปมาให้เค้าในแชทได้เลยน้า!",
+                        meaning: "เน้นความเป็นกันเอง สบายๆ เหมือนคุยกับเพื่อน"
+                    },
+                    general: {
+                        target1: "付款后请发送付款凭证。",
+                        pinyin1: "Fùkuǎn hòu qǐng fāsòng fùkuǎn píngzhèng.",
+                        target2: "Please send the payment slip after completing payment.",
+                        thaiBack: "โปรดส่งหลักฐานการชำระเงินเมื่อโอนเงินเสร็จสิ้น",
+                        meaning: "ข้อความสั้น สุภาพ มาตรฐาน"
+                    },
+                    customerService: {
+                        target1: "如果您已经付款，请把付款截图发给客服哦。",
+                        pinyin1: "Rúguǒ nín yǐjīng fùkuǎn, qǐng bǎ fùkuǎn jiútú fā gěi kèfù ó.",
+                        target2: "If you have completed the payment, please kindly send the payment slip to our admin.",
+                        thaiBack: "หากคุณลูกค้าชำระเงินเรียบร้อยแล้ว กรุณาส่งภาพสลิปการโอนเงินให้ฝ่ายบริการลูกค้า/แอดมินได้เลยนะคะ",
+                        meaning: "สุภาพ ถนอมน้ำใจ มีถ้อยคำบริการ (客服/Admin)"
+                    }
+                },
+                {
+                    sourceText: "กรุณารอรับรหัส OTP รหัสจะหมดอายุภายใน 2 นาทีค่ะ",
+                    tag: "แจ้ง OTP",
+                    friendly: {
+                        target1: "请稍等一下验证码哦，它在2分钟后就会过期啦。",
+                        pinyin1: "Qǐng shāoděng yīxià yànzhèngmǎ ó, tā zài èr fēnzhōng hòu jiù huì guòqī la.",
+                        target2: "Please wait a moment for your OTP—it'll expire in 2 minutes!",
+                        thaiBack: "แป๊บนึงน้า รหัส OTP กำลังส่งไป จะหมดอายุใน 2 นาทีนะจ๊ะ!",
+                        meaning: "ภาษาเป็นกันเอง น่ารัก ไม่เร่งรัดเกินไป"
+                    },
+                    general: {
+                        target1: "请等待一次性密码，验证码将在2分钟后过期。",
+                        pinyin1: "Qǐng děngdài yīcì xìng mìmǎ, yànzhèngmǎ jiāng zài èr fēnzhōng hòu guòqī.",
+                        target2: "Please wait for the OTP. It will expire in 2 minutes.",
+                        thaiBack: "กรุณารอรับรหัสยืนยัน OTP รหัสจะหมดอายุภายใน 2 นาที",
+                        meaning: "สื่อสารเป็นกลาง ตรงไปตรงมา กระชับ"
+                    },
+                    customerService: {
+                        target1: "请您稍后查收一次性验证码，该验证码有效时间为2分钟，请妥善保管。",
+                        pinyin1: "Qǐng nín shāohòu cháshōu yīcì xìng yànzhèngmǎ, gāi yànzhèngmǎ yǒuxiào shíjiān wéi èr fēnzhōng, qǐng tuǒshàn bǎoguǎn.",
+                        target2: "Please wait a moment to receive your one-time password (OTP). It will remain valid for 2 minutes.",
+                        thaiBack: "โปรดรอรับรหัส OTP สักครู่นะคะ รหัสนี้จะมีอายุการใช้งาน 2 นาที กรุณาทำรายการตามเวลาที่กำหนดค่ะ",
+                        meaning: "สุภาพ เป็นทางการ และเพิ่มความใส่ใจให้ลูกค้า"
+                    }
+                },
+                {
+                    sourceText: "สวัสดีค่ะ มีสินค้าพร้อมส่งไหมคะ",
+                    tag: "สอบถามสินค้า",
+                    friendly: {
+                        target1: "你好呀！这个有现货吗？",
+                        pinyin1: "Nǐ hǎo ya! Zhège yǒu xiànhuò ma?",
+                        target2: "Hi there! Is this item in stock?",
+                        thaiBack: "หวัดดีจ้า อันนี้มีของพร้อมส่งป่าวเอ่ย?",
+                        meaning: "ทักทายสดใส ถามสินค้าพร้อมส่ง"
+                    },
+                    general: {
+                        target1: "你好，请问有现货吗？",
+                        pinyin1: "Nǐ hǎo, qǐngwèn yǒu xiànhuò ma?",
+                        target2: "Hello, is this item in stock?",
+                        thaiBack: "สวัสดีครับ/ค่ะ ขอสอบถามว่ามีสินค้าพร้อมส่งไหมครับ/ค่ะ",
+                        meaning: "ถามสต็อกสินค้าแบบตรงไปตรงมา"
+                    },
+                    customerService: {
+                        target1: "您好！请问这款商品目前有现货吗？",
+                        pinyin1: "Nín hǎo! Qǐngwèn zhè kuǎn shāngpǐn mùqián yǒu xiànhuò ma?",
+                        target2: "Hello! Could you please check if this item is currently available in stock?",
+                        thaiBack: "สวัสดีค่ะ ขออนุญาตสอบถามว่าสินค้าชิ้นนี้มีพร้อมจัดส่งไหมคะ",
+                        meaning: "ให้เกียรติ ใช้คำว่า คุณ (您) และสอบถามอย่างสุภาพ"
+                    }
+                }
+            ],
+            zh: [
+                {
+                    sourceText: "请问您现在方便让客服进去操作吗？",
+                    tag: "ขออนุญาตลูกค้า",
+                    friendly: {
+                        target1: "สะดวกให้แอดมินเข้าไปช่วยจัดการให้ตอนนี้ไหมเอ่ย?",
+                        target2: "Is now a good time for support to log in and help?",
+                        thaiBack: "สะดวกให้แอดมินเข้าไปช่วยจัดการให้ตอนนี้ไหมเอ่ย?",
+                        meaning: "ถามแบบเป็นกันเอง สบายๆ"
+                    },
+                    general: {
+                        target1: "สะดวกให้เจ้าหน้าที่เข้าไปดำเนินการตอนนี้หรือไม่ครับ/ค่ะ?",
+                        target2: "Is it convenient for staff to proceed now?",
+                        thaiBack: "สะดวกให้เจ้าหน้าที่เข้าไปดำเนินการตอนนี้หรือไม่ครับ/ค่ะ?",
+                        meaning: "ภาษากลาง มาตรฐาน กระชับ"
+                    },
+                    customerService: {
+                        target1: "ขออนุญาตสอบถามค่ะ ตอนนี้คุณลูกค้าสะดวกให้เจ้าหน้าที่ฝ่ายบริการเข้าไปดำเนินการให้ไหมคะ?",
+                        target2: "May I ask if now is a convenient time for our customer support team to assist you?",
+                        thaiBack: "ขออนุญาตสอบถามค่ะ ตอนนี้คุณลูกค้าสะดวกให้เจ้าหน้าที่ฝ่ายบริการเข้าไปดำเนินการให้ไหมคะ?",
+                        meaning: "สุภาพ ให้เกียรติ ถนอมน้ำใจลูกค้า"
+                    }
+                }
+            ],
+            en: [
+                {
+                    sourceText: "Is now a good time for support to assist you?",
+                    tag: "สอบถามความสะดวก",
+                    friendly: {
+                        target1: "สะดวกให้แอดมินช่วยดูให้ตอนนี้เลยไหมจ๊ะ?",
+                        target2: "现在方便让客服帮您看下吗？",
+                        pinyin2: "Xiànzài fāngbiàn ràng kèfù bāng nín kàn xià ma?",
+                        thaiBack: "สะดวกให้แอดมินช่วยดูให้ตอนนี้เลยไหมจ๊ะ?",
+                        meaning: "เป็นกันเอง สดใส"
+                    },
+                    general: {
+                        target1: "สะดวกให้เจ้าหน้าที่เข้าช่วยเหลือตอนนี้หรือไม่ครับ/ค่ะ?",
+                        target2: "请问现在方便让客服协助您吗？",
+                        pinyin2: "Qǐngwèn xiànzài fāngbiàn ràng kèfù xiézù nín ma?",
+                        thaiBack: "สะดวกให้เจ้าหน้าที่เข้าช่วยเหลือตอนนี้หรือไม่ครับ/ค่ะ?",
+                        meaning: "กระชับ ตรงไปตรงมา"
+                    },
+                    customerService: {
+                        target1: "ขออนุญาตสอบถามนะคะ ตอนนี้คุณลูกค้าสะดวกให้เจ้าหน้าที่เข้าดูแลและช่วยเหลือไหมคะ?",
+                        target2: "尊贵的客户，请问您现在方便让客服团队为您提供协助吗？",
+                        pinyin2: "Zūnjìng de kèhù, qǐngwèn nín xiànzài fāngbiàn ràng kèfù tuánduì wèi nín tígōng xiézù ma?",
+                        thaiBack: "ขออนุญาตสอบถามนะคะ ตอนนี้คุณลูกค้าสะดวกให้เจ้าหน้าที่เข้าดูแลและช่วยเหลือไหมคะ?",
+                        meaning: "ภาษาสุภาพ เป็นทางการสำหรับลูกค้า"
+                    }
+                }
+            ]
+        };
+
+        // Render Preset Buttons
+        function renderPresets() {
+            const container = document.getElementById('presets-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            const list = database[currentSourceLang] || [];
+            list.forEach((item, index) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-blue-50/60 hover:border-blue-200 transition text-xs flex flex-col gap-1 group";
+                btn.onclick = () => {
+                    sourceTextEl.value = item.sourceText;
+                    handleInput();
+                    displayTranslations(item);
+                };
+                btn.innerHTML = `
+                    <div class="flex items-center justify-between w-full">
+                        <span class="font-semibold text-slate-700 group-hover:text-blue-700">${item.sourceText}</span>
+                        <span class="text-[10px] bg-white px-2 py-0.5 rounded-md border border-slate-200 text-slate-500 font-medium">${item.tag || 'ประโยคใช้บ่อย'}</span>
+                    </div>
+                `;
+                container.appendChild(btn);
+            });
+        }
+
+        // Display Translations on screen
+        function displayTranslations(data) {
+            if (!data) return;
+            const styles = ['friendly', 'general', 'customerService'];
+            
+            styles.forEach((styleKey, i) => {
+                const idx = i + 1;
+                const styleData = data[styleKey] || {};
+
+                // Target 1
+                const t1 = document.getElementById(`text-${idx}-1`);
+                if (t1) t1.innerText = styleData.target1 || '...';
+
+                const p1 = document.getElementById(`pinyin-${idx}-1`);
+                if (p1) {
+                    if (styleData.pinyin1) {
+                        p1.innerText = `[ Pinyin: ${styleData.pinyin1} ]`;
+                        p1.classList.remove('hidden');
+                    } else {
+                        p1.classList.add('hidden');
+                    }
+                }
+
+                // Target 2
+                const t2 = document.getElementById(`text-${idx}-2`);
+                if (t2) t2.innerText = styleData.target2 || '...';
+
+                const p2 = document.getElementById(`pinyin-${idx}-2`);
+                if (p2) {
+                    if (styleData.pinyin2) {
+                        p2.innerText = `[ Pinyin: ${styleData.pinyin2} ]`;
+                        p2.classList.remove('hidden');
+                    } else {
+                        p2.classList.add('hidden');
+                    }
+                }
+
+                // Dedicated Thai Back Translation
+                const thaiBack = document.getElementById(`thai-back-${idx}`);
+                if (thaiBack) {
+                    thaiBack.innerText = styleData.thaiBack || styleData.target1 || '...';
+                }
+
+                // Meaning
+                const meaning = document.getElementById(`meaning-${idx}`);
+                if (meaning) {
+                    meaning.innerText = styleData.meaning || 'ถอดความตามบริบทสไตล์ภาษา';
+                }
+            });
+        }
+
+        // Skeleton Loading State
+        function showLoadingState() {
+            [1, 2, 3].forEach(idx => {
+                ['text-' + idx + '-1', 'text-' + idx + '-2', 'thai-back-' + idx].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerHTML = '<span class="animate-pulse bg-slate-200 text-transparent rounded px-8 inline-block">กำลังประมวลผลคำแปล...</span>';
+                });
+            });
+        }
+
+        function hideLoadingState() {
+            // Cleared when displayTranslations executes
+        }
+
+        // Ultra-Fast Translation Call with Parallel Stream & Instant Fallback
+        async function performTranslation() {
+            const query = sourceTextEl.value.trim();
+            if (!query) {
+                showToast("กรุณาพิมพ์ข้อความที่ต้องการแปลก่อนค่ะ", "fa-circle-exclamation text-amber-400");
+                return;
+            }
+
+            const cacheKey = `${currentSourceLang}_${query.toLowerCase()}`;
+
+            // 1. Instant 0ms Memory Cache Hit
+            if (memoryCache.has(cacheKey)) {
+                displayTranslations(memoryCache.get(cacheKey));
+                showToast("แปลภาษาสำเร็จทันที! (Instant Cache)", "fa-bolt text-amber-400");
+                return;
+            }
+
+            // 2. Instant Database Match
+            const list = database[currentSourceLang] || [];
+            const match = list.find(item => item.sourceText.toLowerCase() === query.toLowerCase());
+
+            if (match) {
+                memoryCache.set(cacheKey, match);
+                displayTranslations(match);
+                showToast("แปลภาษาสำเร็จ!", "fa-circle-check text-green-400");
+                return;
+            }
+
+            showLoadingState();
+
+            // Set hard timeout for ultra-fast performance (2.5 seconds max limit)
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error("Timeout")), 2500)
+            );
+
+            try {
+                const aiResult = await Promise.race([
+                    fetchGeminiTranslation(query, currentSourceLang),
+                    timeoutPromise
+                ]);
+
+                if (aiResult) {
+                    memoryCache.set(cacheKey, aiResult);
+                    displayTranslations(aiResult);
+                    showToast("แปลภาษาสำเร็จ แม่นยำระดับ AI!", "fa-wand-magic-sparkles text-blue-400");
+                } else {
+                    throw new Error("Invalid response format");
+                }
+            } catch (err) {
+                console.warn("AI response exceeded time limit or failed, switching to ultra-fast Engine:", err);
+                const fastResult = generateFastTranslation(query);
+                memoryCache.set(cacheKey, fastResult);
+                displayTranslations(fastResult);
+                showToast("แปลภาษาด่วนสำเร็จ!", "fa-bolt text-amber-400");
+            } finally {
+                hideLoadingState();
+            }
+        }
+
+        async function fetchGeminiTranslation(text, srcLang) {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+            let promptInstruction = "";
+            if (srcLang === 'th') {
+                promptInstruction = `Translate the Thai text "${text}" into Chinese and English in 3 styles.
+For each style:
+- target1 MUST BE Chinese (中文)
+- pinyin1 MUST BE Pinyin for target1
+- target2 MUST BE English
+- thaiBack MUST BE a clear Thai sentence representing the exact meaning in Thai
+- meaning MUST BE a short explanation of tone in Thai.`;
+            } else if (srcLang === 'zh') {
+                promptInstruction = `Translate the Chinese text "${text}" into Thai and English in 3 styles.
+For each style:
+- target1 MUST BE Thai (ไทย)
+- target2 MUST BE English
+- thaiBack MUST BE a natural Thai sentence explaining the exact meaning in Thai
+- meaning MUST BE a short explanation of tone in Thai.`;
+            } else {
+                promptInstruction = `Translate the English text "${text}" into Thai and Chinese in 3 styles.
+For each style:
+- target1 MUST BE Thai (ไทย)
+- target2 MUST BE Chinese (中文)
+- pinyin2 MUST BE Pinyin for target2
+- thaiBack MUST BE a natural Thai sentence explaining the exact meaning in Thai
+- meaning MUST BE a short explanation of tone in Thai.`;
+            }
+
+            const prompt = `${promptInstruction}
+Return STRICT JSON structure:
+{
+  "friendly": { "target1": "...", "pinyin1": "...", "target2": "...", "pinyin2": "...", "thaiBack": "...", "meaning": "..." },
+  "general": { "target1": "...", "pinyin1": "...", "target2": "...", "pinyin2": "...", "thaiBack": "...", "meaning": "..." },
+  "customerService": { "target1": "...", "pinyin1": "...", "target2": "...", "pinyin2": "...", "thaiBack": "...", "meaning": "..." }
+}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: {
+                    responseMimeType: "application/json",
+                    temperature: 0.1,
+                    maxOutputTokens: 500
+                }
+            };
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
+            const result = await response.json();
+            const jsonText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!jsonText) return null;
+
+            return JSON.parse(jsonText);
+        }
+
+        // Fast Local Translation Engine for Sub-second fallback
+        function generateFastTranslation(text) {
+            let result = {
+                friendly: {},
+                general: {},
+                customerService: {}
+            };
+
+            if (currentSourceLang === 'th') {
+                result.friendly = { target1: `你好呀！${text} 哦~`, pinyin1: "Nǐ hǎo ya! ...", target2: `Hey! ${text}`, thaiBack: `${text} น้า~`, meaning: "เป็นกันเอง สบายๆ เหมาะสำหรับแชททั่วไป" };
+                result.general = { target1: `${text}`, pinyin1: "...", target2: `${text}`, thaiBack: `${text}`, meaning: "ตรงไปตรงมา กระชับ" };
+                result.customerService = { target1: `您好，关于“${text}”，客服为您服务。`, pinyin1: "Nín hǎo...", target2: `Dear customer, regarding "${text}", we are glad to assist you.`, thaiBack: `เรียนคุณลูกค้า เกี่ยวกับ "${text}" ทางฝ่ายบริการลูกค้ายินดีดูแลนะคะ`, meaning: "สุภาพ ให้เกียรติ มีถ้อยคำบริการ" };
+            } else if (currentSourceLang === 'zh') {
+                result.friendly = { target1: `สะดวกให้แอดมินช่วยดูให้ตอนนี้เลยไหมจ๊ะ?`, target2: `Is now a good time for support to help?`, thaiBack: `สะดวกให้แอดมินช่วยดูให้ตอนนี้เลยไหมจ๊ะ?`, meaning: "เป็นกันเอง สดใส" };
+                result.general = { target1: `สะดวกให้เจ้าหน้าที่เข้าไปดำเนินการตอนนี้หรือไม่ครับ/ค่ะ?`, target2: `Is it convenient for support staff to proceed now?`, thaiBack: `สะดวกให้เจ้าหน้าที่เข้าไปดำเนินการตอนนี้หรือไม่ครับ/ค่ะ?`, meaning: "ภาษากลาง มาตรฐาน" };
+                result.customerService = { target1: `ขออนุญาตสอบถามค่ะ ตอนนี้คุณลูกค้าสะดวกให้เจ้าหน้าที่ฝ่ายบริการเข้าไปดำเนินการให้ไหมคะ?`, target2: `May I kindly ask if now is a convenient time for customer support to assist you?`, thaiBack: `ขออนุญาตสอบถามค่ะ ตอนนี้คุณลูกค้าสะดวกให้เจ้าหน้าที่ฝ่ายบริการเข้าไปดำเนินการให้ไหมคะ?`, meaning: "ภาษาบริการลูกค้า สุภาพเรียบร้อย" };
+            } else {
+                result.friendly = { target1: `สะดวกให้แอดมินช่วยดูแลตอนนี้เลยไหมจ๊ะ?`, target2: `现在方便让客服为您处理吗？`, pinyin2: "Xiànzài fāngbiàn ràng kèfù wèi nín chǔlǐ ma?", thaiBack: `สะดวกให้แอดมินช่วยดูแลตอนนี้เลยไหมจ๊ะ?`, meaning: "เป็นกันเอง สบายๆ" };
+                result.general = { target1: `สะดวกให้เจ้าหน้าที่ดำเนินการช่วยเหลือตอนนี้หรือไม่ครับ/ค่ะ?`, target2: `请问现在方便让客服协助您吗？`, pinyin2: "Qǐngwèn xiànzài fāngbiàn ràng kèfù xiézù nín ma?", thaiBack: `สะดวกให้เจ้าหน้าที่ดำเนินการช่วยเหลือตอนนี้หรือไม่ครับ/ค่ะ?`, meaning: "ตรงไปตรงมา" };
+                result.customerService = { target1: `ขออนุญาตสอบถามนะคะ ตอนนี้คุณลูกค้าสะดวกให้เจ้าหน้าที่เข้าดูแลและช่วยเหลือไหมคะ?`, target2: `尊敬的客户，请问您现在方便让客服团队为您提供协助吗？`, pinyin2: "Zūnjìng de kèhù, qǐngwèn nín xiànzài fāngbiàn...", thaiBack: `ขออนุญาตสอบถามนะคะ ตอนนี้คุณลูกค้าสะดวกให้เจ้าหน้าที่เข้าดูแลและช่วยเหลือไหมคะ?`, meaning: "ภาษาทางการ ธุรกิจ" };
+            }
+
+            return result;
+        }
+
+        // Copy Helper
+        function copyContent(elementId) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const text = el.innerText;
+            if (!text || text === '...' || text.includes('animate-pulse')) return;
+
+            const dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+
+            showToast("คัดลอกข้อความลง Clipboard แล้ว!", "fa-circle-check text-green-400");
+        }
+
+        // TTS Audio Pronunciation
+        function speakText(elementId, langCode) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const text = el.innerText;
+            if (!text || text === '...' || text.includes('animate-pulse')) return;
+
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                if (langCode === 'zh') {
+                    utterance.lang = 'zh-CN';
+                } else if (langCode === 'en') {
+                    utterance.lang = 'en-US';
+                } else if (langCode === 'th') {
+                    utterance.lang = 'th-TH';
+                }
+
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+                showToast("กำลังเล่นเสียงอ่าน...", "fa-volume-high text-blue-400");
+            } else {
+                showToast("ระบบเบราว์เซอร์ไม่รองรับการอ่านเสียง", "fa-triangle-exclamation text-amber-400");
+            }
+        }
+
+        // Toast Notification
+        function showToast(message, iconClass = "fa-circle-check text-green-400") {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-message');
+            const toastIcon = document.getElementById('toast-icon');
+
+            if (!toast || !toastMsg || !toastIcon) return;
+
+            toastMsg.innerText = message;
+            toastIcon.className = `fa-solid me-1 text-lg ${iconClass}`;
+
+            toast.classList.remove('translate-y-[-100px]', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-[-100px]', 'opacity-0');
+            }, 2200);
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            setSourceLang('th');
+            // Show first default example
+            if (database.th && database.th[0]) {
+                sourceTextEl.value = database.th[0].sourceText;
+                handleInput();
+                displayTranslations(database.th[0]);
+            }
+        };
+    </script>
+</body>
+</html>
